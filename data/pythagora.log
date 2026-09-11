@@ -1,0 +1,48 @@
+2026-09-09T06:12:46.450Z INFO Is remote: false
+2026-09-09T06:12:46.451Z INFO Starting Local. Installation path: c:\Users\Soniya Ukey\AppanaDost socialmedia
+2026-09-09T06:12:46.452Z INFO [MainProvider] Creating new MainProvider instance...
+2026-09-09T06:12:46.453Z INFO [TabsManager] Code view listener set up at initialization
+2026-09-09T06:12:46.454Z INFO Installation path exists: c:\Users\Soniya Ukey\AppanaDost socialmedia
+2026-09-09T06:12:46.455Z INFO Initializing database with URL: file:c:\Users\Soniya Ukey\AppanaDost socialmedia\pythagora-core\data\database\pythagora.db
+2026-09-09T06:12:46.476Z INFO Database file exists, skipping prisma generate/push for faster startup
+2026-09-09T06:12:46.479Z INFO Database initialized successfully
+2026-09-09T06:12:46.480Z INFO [Migration] Checking for database migration...
+2026-09-09T06:12:46.748Z INFO [Migration] No migration needed
+2026-09-09T06:16:12.851Z INFO [TabsManager] First file opened, triggering split view
+2026-09-09T06:16:12.852Z INFO [MainProvider] First file opened, creating split view
+2026-09-09T06:16:20.640Z INFO [TabsManager] First file opened, triggering split view
+2026-09-09T06:16:20.641Z INFO [MainProvider] First file opened, creating split view
+2026-09-09T06:16:34.235Z INFO [TabsManager] First file opened, triggering split view
+2026-09-09T06:16:34.237Z INFO [MainProvider] First file opened, creating split view
+2026-09-09T06:21:40.343Z INFO [TabsManager] First file opened, triggering split view
+2026-09-09T06:21:40.344Z INFO [MainProvider] First file opened, creating split view
+2026-09-09T06:28:56.547Z INFO Closing entire Pythagora extension...
+2026-09-09T06:28:56.558Z ERROR Error closing extension
+Error: Canceled
+Stack: Canceled: Canceled
+	at new rS (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:435:152801)
+	at i._remoteCall (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:435:158885)
+	at r.<computed>.s.charCodeAt.r.<computed> (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:435:155638)
+	at uf._doExecuteCommand (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:542:48319)
+	at uf.executeCommand (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:542:47766)
+	at Object.executeCommand (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:672:139141)
+	at closeEntirePythagoraExtension (c:\Users\Soniya Ukey\.vscode\extensions\pythagoratechnologies.pythagora-vs-code-2.6.19\out\extension.js:542:31)
+	at Object.deactivate (c:\Users\Soniya Ukey\.vscode\extensions\pythagoratechnologies.pythagora-vs-code-2.6.19\out\extension.js:409:15)
+	at FR._deactivate (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:546:14930)
+	at file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:546:12457
+	at Array.map (<anonymous>)
+	at FR._deactivateAll (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:546:12445)
+	at FR.terminate (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:546:12796)
+	at i.terminate (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:548:1072)
+	at ma (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:851:11797)
+	at Np.value (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:851:9939)
+	at T._deliver (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:431:3617)
+	at T.fire (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:431:3935)
+	at ys.fire (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:433:8627)
+	at MessagePortMain.<anonymous> (file:///c:/Users/Soniya%20Ukey/AppData/Local/Programs/Microsoft%20VS%20Code/88e44fa0e0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:851:8171)
+	at MessagePortMain.emit (node:events:509:28)
+	at MessagePortMain.emit (node:domain:489:12)
+	at Object.emit (node:electron/js2c/utility_init:2:2934)
+Extra context: {
+  "message": "Canceled"
+}

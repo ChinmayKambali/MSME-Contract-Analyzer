@@ -1,0 +1,2 @@
+import { Sparkles } from "lucide-react";
+export default function ManagerAgent() { return <div className="flex items-start gap-3 rounded-xl bg-[#163b43] p-5 text-white"><Sparkles className="mt-1 shrink-0 text-[#f1b28c]" size={20} /><div><p className="font-semibold">Manager agent is synthesizing findings</p><p className="mt-1 text-sm leading-6 text-slate-300">The specialists are comparing their results and ranking the clauses that matter most.</p></div></div>; }

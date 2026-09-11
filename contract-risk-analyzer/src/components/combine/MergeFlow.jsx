@@ -1,0 +1,2 @@
+import { GitMerge } from "lucide-react";
+export default function MergeFlow() { return <div className="grid place-items-center rounded-xl bg-[#f1f8f6] p-7 text-center"><span className="grid h-14 w-14 place-items-center rounded-full bg-white text-[#3b8c80] shadow-sm"><GitMerge size={25} /></span><p className="mt-3 font-semibold text-slate-800">Combining insights</p><p className="mt-1 text-sm text-slate-500">Creating one clear risk picture from the specialist reviews.</p></div>; }
