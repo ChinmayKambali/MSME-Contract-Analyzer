@@ -4,12 +4,23 @@ import { mockReport } from "../data/mockReport";
 const ContractContext = createContext(null);
 
 export function ContractProvider({ children }) {
-	const [contract, setContract] = useState({ file: null, report: mockReport });
-	return <ContractContext.Provider value={{ contract, setContract }}>{children}</ContractContext.Provider>;
+  const [contract, setContract] = useState({
+    file: null,
+    analysisId: null,
+    status: null,
+    report: mockReport,
+    error: null,
+  });
+
+  return (
+    <ContractContext.Provider value={{ contract, setContract }}>
+      {children}
+    </ContractContext.Provider>
+  );
 }
 
 export function useContract() {
-	const context = useContext(ContractContext);
-	if (!context) throw new Error("useContract must be used inside ContractProvider");
-	return context;
+  const context = useContext(ContractContext);
+  if (!context) throw new Error("useContract must be used inside ContractProvider");
+  return context;
 }
