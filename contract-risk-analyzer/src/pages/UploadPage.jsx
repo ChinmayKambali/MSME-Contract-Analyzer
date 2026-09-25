@@ -1,3 +1,4 @@
+//upload page
 import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
 import StepProgress from "../components/layout/StepProgress";

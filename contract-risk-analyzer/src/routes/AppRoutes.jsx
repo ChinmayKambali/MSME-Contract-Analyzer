@@ -1,3 +1,4 @@
+// this is for routing
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import UploadPage from "../pages/UploadPage";

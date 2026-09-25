@@ -1,3 +1,4 @@
+// scan Page
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, FileSearch } from "lucide-react";

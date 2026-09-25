@@ -1,3 +1,4 @@
+//Result page 
 import MainLayout from "../layouts/MainLayout";
 import StepProgress from "../components/layout/StepProgress";
 import Card from "../components/common/Card";
