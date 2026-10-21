@@ -35,6 +35,7 @@ class AnalysisRecord(Base):
     score = Column(Integer, nullable=True)
     summary = Column(Text, nullable=True)
     error_message = Column(Text, nullable=True)
+    security_report = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 

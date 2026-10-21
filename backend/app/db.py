@@ -22,6 +22,13 @@ def init_db():
             logger.info("pgvector extension initialized.")
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created successfully.")
+        # Additive column migrations: safe on both fresh and existing DBs.
+        with engine.begin() as conn:
+            conn.execute(text(
+                "ALTER TABLE analysis_records "
+                "ADD COLUMN IF NOT EXISTS security_report JSON;"
+            ))
+        logger.info("Column migration check complete.")
     except Exception as e:
         logger.warning(f"Database initialization notice/warning: {e}")
 

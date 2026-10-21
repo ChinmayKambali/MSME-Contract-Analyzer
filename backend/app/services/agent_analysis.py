@@ -1,14 +1,19 @@
 import time
 import json
 import logging
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from app.config import settings
 from app.services.llm_client import generate_json, generate_text, resolve_active_model
 from app.services.retrieval import retrieve_benchmark_clauses
+from app.utils.security import wrap_untrusted, verify_finding, enforce_risk_floor
 
 logger = logging.getLogger(__name__)
+
+# Hard cap: at most 2 threads may be inside a Gemini API call at the same time.
+_GEMINI_SEMAPHORE = threading.Semaphore(2)
 
 AGENT_CONFIGS = {
     "payment_terms": {
@@ -108,13 +113,14 @@ def analyze_domain_category(
     )
 
     prompt = (
-        f"CONTRACT TEXT TO AUDIT:\n\"\"\"\n{contract_text[:8000]}\n\"\"\"\n\n"
+        f"CONTRACT TEXT TO AUDIT:\n\"\"\"\n{wrap_untrusted(contract_text)[:8100]}\n\"\"\"\n\n"
         f"RETRIEVED BENCHMARK REFERENCE CLAUSES:\n{benchmark_context}\n\n"
         f"Audit the contract text for '{agent_meta['title']}' risks and output structured JSON."
     )
 
     try:
-        json_raw = generate_json(prompt, system_instruction=system_instruction, model_name=model_name)
+        with _GEMINI_SEMAPHORE:
+            json_raw = generate_json(prompt, system_instruction=system_instruction, model_name=model_name)
         parsed = json.loads(json_raw)
         clauses = parsed.get("clauses", []) if isinstance(parsed, dict) else []
 
@@ -230,7 +236,7 @@ def run_agentic_analysis_pipeline(
     categories = list(AGENT_CONFIGS.keys())
     agent_results: Dict[str, List[Dict[str, Any]]] = {}
 
-    max_workers = getattr(settings, "MAX_AGENT_CONCURRENCY", 3)
+    max_workers = getattr(settings, "MAX_AGENT_CONCURRENCY", 2)
 
     # Resolve single active model for the entire analysis run (NO mid-run model switching)
     resolved_model = resolve_active_model()
@@ -288,10 +294,24 @@ def run_agentic_analysis_pipeline(
         if failed_agents:
             raise RuntimeError(f"Agentic pipeline failed: Agents {failed_agents} failed due to LLM/API errors.")
 
-    # Step 3: Combine all detected clauses
+    # Step 3: Combine all detected clauses and run verification + risk-floor enforcement
     all_clauses = []
+    retrieved_ids_all: List[str] = [
+        b.get("source_doc", "") for bm in benchmark_map.values() for b in bm
+    ]
     for cat in categories:
-        all_clauses.extend(agent_results.get(cat, []))
+        for clause in agent_results.get(cat, []):
+            verify_finding(
+                clause,
+                source_text=contract_text,
+                retrieved_benchmark_ids=retrieved_ids_all,
+                injection_in_clause=bool(
+                    clause.get("verification", {}) and
+                    any("Injection" in f for f in clause.get("verification", {}).get("flags", []))
+                ),
+            )
+            enforce_risk_floor(clause)
+            all_clauses.append(clause)
 
     # Step 4: Calculate score and overall risk
     metrics = calculate_overall_risk_and_score(all_clauses)

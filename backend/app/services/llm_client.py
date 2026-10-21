@@ -1,3 +1,4 @@
+import random
 import re
 import time
 import logging
@@ -16,6 +17,27 @@ MODEL_FALLBACK_POOL = [
     "gemini-flash-latest"
 ]
 
+
+
+def _is_retryable(err_str: str) -> bool:
+    """Return True for transient quota / availability errors."""
+    return any(k in err_str for k in (
+        "429", "RESOURCE_EXHAUSTED",
+        "503", "UNAVAILABLE", "Service Unavailable",
+    ))
+
+def _extract_retry_delay(err_str: str, base_delay: float) -> float:
+    """Return server-suggested wait (+ 1 s buffer) or base_delay, whichever is larger."""
+    match = re.search(
+        r"""retry(?:\s*in|_delay|Delay)?\s*['""]?:?\s*['""]?(\d+(?:\.\d+)?)s?['""]?""",
+        err_str, re.IGNORECASE
+    )
+    if match:
+        return max(base_delay, float(match.group(1)) + 1.0)
+    if _is_retryable(err_str):
+        return max(base_delay, 20.0)
+    return base_delay
+
 def call_with_retry(
     func: Callable,
     *args,
@@ -25,30 +47,67 @@ def call_with_retry(
     **kwargs
 ) -> Any:
     """
-    Executes a callable with exponential backoff retry for transient network/503/429 errors.
-    Dynamically extracts retryDelay / retry-in seconds from Gemini API error responses.
+    Retry with exponential backoff (2 s → 4 s → 8 s + jitter).
+    Treats 503/UNAVAILABLE the same as 429/RESOURCE_EXHAUSTED.
+    On exhaustion raises the last exception.
     """
     delay = initial_delay
+    last_exc: Exception = RuntimeError("No attempts made")
     for attempt in range(1, max_retries + 2):
         try:
             return func(*args, **kwargs)
         except Exception as e:
+            last_exc = e
             if attempt > max_retries:
-                raise e
+                break
             err_str = str(e)
-            wait_sec = delay
-            match = re.search(r"retry(?:\s*in|_delay|Delay)?\s*['\"]?:?\s*['\"]?(\d+(?:\.\d+)?)s?['\"]?", err_str, re.IGNORECASE)
-            if match:
-                extracted = float(match.group(1))
-                wait_sec = max(wait_sec, extracted + 1.0)
-            elif "RESOURCE_EXHAUSTED" in err_str or "429" in err_str:
-                wait_sec = max(wait_sec, 20.0)
-
+            wait_sec = _extract_retry_delay(err_str, delay)
+            wait_sec += random.uniform(0.1, 1.5)   # jitter
             logger.warning(
-                f"Transient error in {getattr(func, '__name__', str(func))} (attempt {attempt}/{max_retries + 1}): {e}. Retrying in {wait_sec:.1f}s..."
+                f"Transient error in {getattr(func, '__name__', str(func))} "
+                f"(attempt {attempt}/{max_retries}): {e}. Retrying in {wait_sec:.1f}s…"
             )
             time.sleep(wait_sec)
             delay *= backoff_factor
+    raise last_exc
+
+def _call_with_model_fallback(
+    client: genai.Client,
+    models: List[str],
+    contents: str,
+    config,
+    label: str = "generate",
+) -> Any:
+    """
+    Try each model in *models* with full per-model retries.
+    Advance to next model on retryable errors; raise on non-retryable.
+    Raise only when every model has failed.
+    """
+    last_exc: Exception = RuntimeError("No models available")
+    for model_name in models:
+        try:
+            response = call_with_retry(
+                client.models.generate_content,
+                model=model_name,
+                contents=contents,
+                config=config,
+                max_retries=4,
+                initial_delay=2.0,
+                backoff_factor=2.0,
+            )
+            logger.info(f"[{label}] answered by model '{model_name}'")
+            return response
+        except Exception as e:
+            last_exc = e
+            if _is_retryable(str(e)):
+                logger.warning(
+                    f"[{label}] model '{model_name}' exhausted retries "
+                    f"({e}). Trying next model…"
+                )
+                continue
+            # Non-retryable (auth, bad request, etc.) – fail fast
+            raise
+    raise last_exc
 
 def get_genai_client() -> Optional[genai.Client]:
     if not settings.GEMINI_API_KEY:
@@ -93,27 +152,18 @@ def generate_text(
     model_name: Optional[str] = None
 ) -> str:
     """
-    Single-shot text generation call using non-chat generate_content.
-    Disables AFC to avoid unnecessary multi-turn tool calling overhead/warnings.
+    Single-shot text generation with full model-pool fallback.
     """
     client = get_genai_client()
     if not client:
         raise ValueError("GEMINI_API_KEY is missing.")
 
-    target_model = model_name or settings.MODEL_NAME
-
+    models = list(dict.fromkeys([model_name or settings.MODEL_NAME] + MODEL_FALLBACK_POOL))
     config = types.GenerateContentConfig(
         system_instruction=system_instruction,
         automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
     )
-
-    response = call_with_retry(
-        client.models.generate_content,
-        model=target_model,
-        contents=prompt,
-        config=config,
-        max_retries=2
-    )
+    response = _call_with_model_fallback(client, models, prompt, config, label="generate_text")
     return response.text or ""
 
 def generate_json(
@@ -123,31 +173,22 @@ def generate_json(
     model_name: Optional[str] = None
 ) -> str:
     """
-    Plain non-chat generate_content call for structured JSON outputs
-    (classification, per-agent analysis, aggregation).
-    Disables AFC since multi-turn tool calling is unnecessary.
+    Structured JSON generation with full model-pool fallback.
     """
     client = get_genai_client()
     if not client:
         raise ValueError("GEMINI_API_KEY is missing.")
 
-    target_model = model_name or settings.MODEL_NAME
-
+    models = list(dict.fromkeys([model_name or settings.MODEL_NAME] + MODEL_FALLBACK_POOL))
     config = types.GenerateContentConfig(
         system_instruction=system_instruction,
         response_mime_type="application/json",
         response_schema=response_schema,
         automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
     )
-
-    response = call_with_retry(
-        client.models.generate_content,
-        model=target_model,
-        contents=prompt,
-        config=config,
-        max_retries=2
-    )
+    response = _call_with_model_fallback(client, models, prompt, config, label="generate_json")
     return response.text or ""
+
 
 def get_embedding(text_content: str, task_type: str = "RETRIEVAL_DOCUMENT") -> List[float]:
     """

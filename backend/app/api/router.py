@@ -10,7 +10,8 @@ from app.schemas import (
     ClauseOutputSchema,
     HistoryItemSchema,
     ChatRequestSchema,
-    ChatResponseSchema
+    ChatResponseSchema,
+    SecuritySchema
 )
 from app.services.storage import storage_service
 from app.api.chat import handle_followup_chat
@@ -122,7 +123,8 @@ def get_analysis_result(analysis_id: str, db: Session = Depends(get_db)):
         overallRisk=record.overall_risk or "Moderate",
         score=record.score or 62,
         summary=record.summary or "Analysis complete.",
-        clauses=clauses_out
+        clauses=clauses_out,
+        security=SecuritySchema(**record.security_report) if record.security_report else None
     )
 
 @router.get("/history", response_model=List[HistoryItemSchema])

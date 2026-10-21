@@ -5,6 +5,7 @@ from app.db import SessionLocal
 from app.models import AnalysisRecord, AnalysisClauseResult
 from app.services.document_parser import parser_service
 from app.services.agent_analysis import run_agentic_analysis_pipeline, AGENT_CONFIGS
+from app.utils.security import sanitize_contract_text
 
 logger = logging.getLogger(__name__)
 
@@ -37,13 +38,16 @@ def run_contract_analysis(analysis_id: str):
             db.commit()
             return
 
-        contract_text = parsed.get("text", "")
-        if not contract_text:
+        raw_text = parsed.get("text", "")
+        if not raw_text:
             record.status = "FAILED"
             record.stage = "FAILED"
             record.error_message = "No readable text content extracted from document."
             db.commit()
             return
+
+        # Security: sanitize untrusted contract text at intake
+        contract_text, security_report = sanitize_contract_text(raw_text)
 
         # Stage 2: ANALYZING
         record.status = "ANALYZING"
@@ -78,6 +82,7 @@ def run_contract_analysis(analysis_id: str):
             file_name=record.file_name,
             status_callback=on_agent_status_change
         )
+        results["security"] = security_report
 
         # Stage 3: COMBINING
         record = db.query(AnalysisRecord).filter(AnalysisRecord.id == analysis_id).first()
@@ -120,6 +125,7 @@ def run_contract_analysis(analysis_id: str):
         record.overall_risk = results.get("overall_risk", "Moderate")
         record.score = results.get("score", 65)
         record.summary = results.get("summary", "Analysis completed successfully.")
+        record.security_report = results.get("security")
         db.commit()
 
         logger.info(f"Finished analysis task successfully for ID: {analysis_id}")
