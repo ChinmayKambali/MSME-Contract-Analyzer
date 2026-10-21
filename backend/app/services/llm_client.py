@@ -26,6 +26,12 @@ def _is_retryable(err_str: str) -> bool:
         "503", "UNAVAILABLE", "Service Unavailable",
     ))
 
+_HARD_QUOTA_MARKERS = ("PerDay", "per day", "limit: 0", "quotaValue': '0'")
+
+def _is_hard_quota_failure(err_str: str) -> bool:
+    """True when the 429 signals a per-day / exhausted-for-today limit (no point retrying)."""
+    return any(m in err_str for m in _HARD_QUOTA_MARKERS)
+
 def _extract_retry_delay(err_str: str, base_delay: float) -> float:
     """Return server-suggested wait (+ 1 s buffer) or base_delay, whichever is larger."""
     match = re.search(
@@ -41,33 +47,45 @@ def _extract_retry_delay(err_str: str, base_delay: float) -> float:
 def call_with_retry(
     func: Callable,
     *args,
-    max_retries: int = 4,
+    max_retries: int = 3,          # cap at 3 attempts per model
     initial_delay: float = 2.0,
     backoff_factor: float = 2.0,
+    max_total_wait: float = 60.0,  # hard ceiling on total sleep per model
     **kwargs
 ) -> Any:
     """
     Retry with exponential backoff (2 s → 4 s → 8 s + jitter).
-    Treats 503/UNAVAILABLE the same as 429/RESOURCE_EXHAUSTED.
+    Hard-quota (PerDay / limit:0) errors are re-raised immediately with no sleep.
+    Other 429/503 errors retry up to max_retries times, capped at max_total_wait seconds.
     On exhaustion raises the last exception.
     """
     delay = initial_delay
     last_exc: Exception = RuntimeError("No attempts made")
+    total_waited = 0.0
     for attempt in range(1, max_retries + 2):
         try:
             return func(*args, **kwargs)
         except Exception as e:
             last_exc = e
+            err_str = str(e)
+            # Hard daily quota: re-raise immediately so caller can skip to next model
+            if _is_hard_quota_failure(err_str):
+                raise
             if attempt > max_retries:
                 break
-            err_str = str(e)
             wait_sec = _extract_retry_delay(err_str, delay)
             wait_sec += random.uniform(0.1, 1.5)   # jitter
+            # Never exceed the per-model total wait ceiling
+            remaining = max_total_wait - total_waited
+            if remaining <= 0:
+                break
+            wait_sec = min(wait_sec, remaining)
             logger.warning(
                 f"Transient error in {getattr(func, '__name__', str(func))} "
                 f"(attempt {attempt}/{max_retries}): {e}. Retrying in {wait_sec:.1f}s…"
             )
             time.sleep(wait_sec)
+            total_waited += wait_sec
             delay *= backoff_factor
     raise last_exc
 
@@ -79,8 +97,8 @@ def _call_with_model_fallback(
     label: str = "generate",
 ) -> Any:
     """
-    Try each model in *models* with full per-model retries.
-    Advance to next model on retryable errors; raise on non-retryable.
+    Try each model in *models* with per-model retries (max 3, max 60 s wait).
+    Hard daily-quota errors skip retries and advance to the next model immediately.
     Raise only when every model has failed.
     """
     last_exc: Exception = RuntimeError("No models available")
@@ -91,15 +109,23 @@ def _call_with_model_fallback(
                 model=model_name,
                 contents=contents,
                 config=config,
-                max_retries=4,
+                max_retries=3,
                 initial_delay=2.0,
                 backoff_factor=2.0,
+                max_total_wait=60.0,
             )
             logger.info(f"[{label}] answered by model '{model_name}'")
             return response
         except Exception as e:
             last_exc = e
-            if _is_retryable(str(e)):
+            err_str = str(e)
+            if _is_hard_quota_failure(err_str):
+                logger.warning(
+                    f"[{label}] model '{model_name}' hit daily quota limit. "
+                    f"Skipping to next model immediately."
+                )
+                continue
+            if _is_retryable(err_str):
                 logger.warning(
                     f"[{label}] model '{model_name}' exhausted retries "
                     f"({e}). Trying next model…"
@@ -107,7 +133,9 @@ def _call_with_model_fallback(
                 continue
             # Non-retryable (auth, bad request, etc.) – fail fast
             raise
-    raise last_exc
+    raise RuntimeError(
+        "Gemini quota exhausted or service busy, try again later."
+    ) from last_exc
 
 def get_genai_client() -> Optional[genai.Client]:
     if not settings.GEMINI_API_KEY:

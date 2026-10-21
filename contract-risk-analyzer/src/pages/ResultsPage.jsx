@@ -1,4 +1,4 @@
-//Result page 
+//Result page
 import MainLayout from "../layouts/MainLayout";
 import StepProgress from "../components/layout/StepProgress";
 import Card from "../components/common/Card";
@@ -7,6 +7,7 @@ import ClauseCard from "../components/results/ClauseCard";
 import DocumentInfo from "../components/results/DocumentInfo";
 import ActionButtons from "../components/results/ActionButtons";
 import FollowupChat from "../components/results/FollowupChat";
+import InjectionBanner from "../components/results/InjectionBanner";
 import { useContract } from "../context/ContractContext";
 
 export default function ResultsPage() {
@@ -22,10 +23,13 @@ export default function ResultsPage() {
     clauses: [],
   };
 
+  const security = report.security ?? null;
+
   return (
     <MainLayout>
       <StepProgress current={5} />
       <section className="fade-up">
+        {/* Page heading */}
         <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#d97745]">
@@ -38,24 +42,33 @@ export default function ResultsPage() {
           <ActionButtons />
         </div>
 
-        <Card>
+        {/* Header card: document meta + score ring */}
+        <Card className="p-6">
           <DocumentInfo report={report} />
           <div className="my-7 border-t border-slate-100" />
           <RiskSummary report={report} />
         </Card>
 
+        {/* Main body: clauses + sidebar */}
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
           <div>
+            {/* Clauses heading */}
             <div className="mb-4 flex items-end justify-between">
               <div>
                 <h3 className="text-xl font-bold text-[#163b43]">Clauses to review</h3>
-                <p className="mt-1 text-sm text-slate-500">Prioritized by potential business impact.</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Prioritized by potential business impact.
+                </p>
               </div>
               <span className="text-sm font-semibold text-slate-500">
                 {report.clauses ? report.clauses.length : 0} findings
               </span>
             </div>
 
+            {/* Injection banner – above the clause list */}
+            <InjectionBanner security={security} />
+
+            {/* Clause list */}
             {report.clauses && report.clauses.length > 0 ? (
               <div className="space-y-4">
                 {report.clauses.map((clause) => (
@@ -64,8 +77,12 @@ export default function ResultsPage() {
               </div>
             ) : (
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-8 text-center">
-                <p className="font-semibold text-emerald-800">No high or medium risk clauses detected!</p>
-                <p className="mt-1 text-sm text-emerald-600">This contract conforms to standard, fair MSME business practices.</p>
+                <p className="font-semibold text-emerald-800">
+                  No high or medium risk clauses detected!
+                </p>
+                <p className="mt-1 text-sm text-emerald-600">
+                  This contract conforms to standard, fair MSME business practices.
+                </p>
               </div>
             )}
 
@@ -73,12 +90,14 @@ export default function ResultsPage() {
             <FollowupChat />
           </div>
 
+          {/* Sidebar */}
           <aside className="h-fit space-y-6">
             <div className="rounded-2xl bg-[#163b43] p-6 text-white shadow-xs">
               <p className="text-sm font-semibold text-[#f1b28c]">A useful next step</p>
               <h3 className="mt-3 text-xl font-bold">Share priorities with counsel.</h3>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                This report highlights where a human review can have the greatest payoff for your business.
+                This report highlights where a human review can have the greatest payoff for your
+                business.
               </p>
             </div>
           </aside>
