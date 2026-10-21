@@ -1,3 +1,22 @@
+/**
+ * @typedef {{ mode: 'actual'|'normalized'|'not_computable', amount_inr: number|null, basis: string,
+ *   contract_days: number|null, statutory_days: number|null, extra_days: number|null,
+ *   rate_used_pct: number|null, rate_date: string|null, note: string }} ClauseExposure
+ *
+ * @typedef {{ quote_verified: boolean, benchmark_verified: boolean|null,
+ *   confidence: 'high'|'medium'|'low', flags: string[] }} ClauseVerification
+ *
+ * @typedef {{ injection_detected: boolean, patterns: string[], stripped_chars: number }} AnalysisSecurity
+ *
+ * @typedef {{ id: number, title: string, risk: string, category: string, location: string,
+ *   text: string, recommendation: string, why_risky: string, legal_flag: string|null,
+ *   benchmark_comparison: string|null, confidence: number, benchmark_refs: object[],
+ *   agent_category: string, exposure: ClauseExposure|null, verification: ClauseVerification|null }} ClauseFinding
+ *
+ * @typedef {{ title: string, fileName: string, pages: number|null, analyzedAt: string,
+ *   overallRisk: string, score: number, summary: string, clauses: ClauseFinding[],
+ *   security: AnalysisSecurity|null }} AnalysisReport
+ */
 export const mockReport = {
 	title: "Vendor Services Agreement",
 	fileName: "vendor-services-agreement.pdf",

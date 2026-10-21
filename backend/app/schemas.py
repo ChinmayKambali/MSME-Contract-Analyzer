@@ -1,5 +1,30 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Literal, Optional, Dict, Any
 from pydantic import BaseModel, Field
+
+
+class ExposureSchema(BaseModel):
+    mode: Literal["actual", "normalized", "not_computable"]
+    amount_inr: Optional[float] = None
+    basis: str
+    contract_days: Optional[int] = None
+    statutory_days: Optional[int] = None
+    extra_days: Optional[int] = None
+    rate_used_pct: Optional[float] = None
+    rate_date: Optional[str] = None
+    note: str
+
+
+class VerificationSchema(BaseModel):
+    quote_verified: bool
+    benchmark_verified: Optional[bool] = None
+    confidence: Literal["high", "medium", "low"]
+    flags: List[str] = Field(default_factory=list)
+
+
+class SecuritySchema(BaseModel):
+    injection_detected: bool
+    patterns: List[str] = Field(default_factory=list)
+    stripped_chars: int
 
 class ClauseOutputSchema(BaseModel):
     id: int
@@ -17,6 +42,8 @@ class ClauseOutputSchema(BaseModel):
     confidence: Optional[float] = 1.0
     benchmark_refs: Optional[List[Dict[str, Any]]] = []
     agent_category: str
+    exposure: Optional[ExposureSchema] = None
+    verification: Optional[VerificationSchema] = None
 
 class AnalysisReportResponse(BaseModel):
     title: str
@@ -27,6 +54,7 @@ class AnalysisReportResponse(BaseModel):
     score: int
     summary: str
     clauses: List[ClauseOutputSchema]
+    security: Optional[SecuritySchema] = None
 
 class AnalysisStatusResponse(BaseModel):
     analysis_id: str
