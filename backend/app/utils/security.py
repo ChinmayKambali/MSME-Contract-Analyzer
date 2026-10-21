@@ -27,7 +27,23 @@ _INJECTION_PATTERNS: List[str] = [
     r"reveal\s+(?:the\s+)?prompt",
 ]
 
-_COMPILED_PATTERNS = [re.compile(p, re.IGNORECASE) for p in _INJECTION_PATTERNS]
+# Human-readable label per pattern (same order as _INJECTION_PATTERNS)
+_PATTERN_LABELS: List[str] = [
+    "Instruction override attempt",
+    "Instruction override attempt",
+    "System prompt probing",
+    "Role change attempt",
+    "Role change attempt",
+    "Risk rating manipulation",
+    "Risk rating manipulation",
+    "Output restriction attempt",
+    "System prompt probing",
+]
+
+_COMPILED_PATTERNS = [
+    (re.compile(p, re.IGNORECASE), label)
+    for p, label in zip(_INJECTION_PATTERNS, _PATTERN_LABELS)
+]
 
 # Zero-width + non-printable control characters (excluding normal whitespace)
 _STRIP_RE = re.compile(
@@ -63,9 +79,14 @@ def sanitize_contract_text(text: str) -> tuple[str, Dict[str, Any]]:
     # 3. Detect injection phrases (scan original normalized text so counts
     #    reflect what the LLM would actually see before stripping)
     matched_patterns: List[str] = []
-    for pat in _COMPILED_PATTERNS:
-        if pat.search(normalized):
+    matches: List[Dict[str, Any]] = []
+    for pat, label in _COMPILED_PATTERNS:
+        m = pat.search(normalized)
+        if m:
             matched_patterns.append(pat.pattern)
+            excerpt = _extract_excerpt(normalized, m.start(), m.end())
+            section = _nearest_section(normalized, m.start())
+            matches.append({"label": label, "excerpt": excerpt, "section": section})
 
     injection_detected = bool(matched_patterns)
 
@@ -73,6 +94,7 @@ def sanitize_contract_text(text: str) -> tuple[str, Dict[str, Any]]:
         "injection_detected": injection_detected,
         "patterns": matched_patterns,
         "stripped_chars": stripped_chars,
+        "matches": matches,
     }
     return clean_text, report
 
@@ -121,7 +143,7 @@ def verify_finding(
 
     if not quote_verified and quoted_text:
         flags.append(
-            f"Quoted clause text not found verbatim in source (fuzzy score < 90)."
+            "Quoted clause text not found verbatim in source (fuzzy score < 90)."
         )
 
     # --- Benchmark verification ---
@@ -207,8 +229,40 @@ def enforce_risk_floor(finding: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Internal helper
+# Internal helpers
 # ---------------------------------------------------------------------------
+
+# Regex for common section/clause headings (e.g. "Section 3", "Clause 12.1", "3.")
+_SECTION_RE = re.compile(
+    r"(?:section|clause|article|schedule|annexure)\s+[\d\.]+|^\d+\.\d*\s+\w",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _extract_excerpt(text: str, start: int, end: int, max_len: int = 220) -> str:
+    """Return the sentence containing the match, capped at max_len chars."""
+    # Walk back to sentence start
+    sent_start = max(text.rfind(".", 0, start) + 1, text.rfind("\n", 0, start) + 1, 0)
+    # Walk forward to sentence end
+    sent_end_dot = text.find(".", end)
+    sent_end_nl = text.find("\n", end)
+    candidates = [x for x in (sent_end_dot, sent_end_nl) if x != -1]
+    sent_end = min(candidates) + 1 if candidates else len(text)
+    sentence = text[sent_start:sent_end].strip()
+    if len(sentence) > max_len:
+        sentence = sentence[:max_len].rstrip() + "…"
+    return sentence
+
+
+def _nearest_section(text: str, pos: int) -> Optional[str]:
+    """Return the closest preceding section/clause heading, or None."""
+    best: Optional[str] = None
+    for m in _SECTION_RE.finditer(text):
+        if m.start() > pos:
+            break
+        best = m.group(0).strip()
+    return best
+
 
 def _append_verification_flag(finding: Dict[str, Any], msg: str) -> None:
     if "verification" not in finding or finding["verification"] is None:

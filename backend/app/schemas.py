@@ -21,10 +21,17 @@ class VerificationSchema(BaseModel):
     flags: List[str] = Field(default_factory=list)
 
 
+class SecurityMatchSchema(BaseModel):
+    label: str
+    excerpt: str
+    section: Optional[str] = None
+
+
 class SecuritySchema(BaseModel):
     injection_detected: bool
     patterns: List[str] = Field(default_factory=list)
     stripped_chars: int
+    matches: Optional[List[SecurityMatchSchema]] = None
 
 class ClauseOutputSchema(BaseModel):
     id: int

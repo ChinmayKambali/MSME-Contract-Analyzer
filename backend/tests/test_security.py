@@ -21,6 +21,13 @@ def test_injection_phrase_detected():
     assert len(report["patterns"]) >= 1
     # Clause text must NOT be deleted
     assert "Payment shall be made" in clean
+    # matches must carry the injected excerpt
+    matches = report.get("matches", [])
+    assert len(matches) >= 1, "Expected at least one match entry"
+    excerpts = " ".join(m["excerpt"].lower() for m in matches)
+    assert "ignore" in excerpts and "previous instructions" in excerpts, (
+        f"Expected injection phrase in excerpts, got: {excerpts!r}"
+    )
 
 
 # ---------------------------------------------------------------------------
