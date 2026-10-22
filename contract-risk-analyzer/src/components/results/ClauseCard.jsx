@@ -1,7 +1,116 @@
-import { ChevronDown, MapPin, AlertTriangle, Scale, BookOpen, CheckCircle2 } from "lucide-react";
+import { ChevronDown, MapPin, AlertTriangle, Scale, BookOpen, CheckCircle2, TrendingUp, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
 import Badge from "../common/Badge";
 import { riskColors } from "../../utils/riskColors";
 import { renderInline } from "../../utils/renderInline";
+
+// ---------- helpers ----------
+
+/** Format a number with Indian grouping: 1,00,000 */
+function fmtINR(amount) {
+  if (amount == null) return null;
+  const n = Math.round(amount);
+  return "Rs\u00a0" + n.toLocaleString("en-IN");
+}
+
+/** Build caption parts from exposure fields, skipping nulls */
+function buildCaption(exp) {
+  const parts = [];
+  if (exp.extra_days != null && exp.statutory_days != null) {
+    parts.push(`${exp.extra_days} day${exp.extra_days !== 1 ? "s" : ""} over the ${exp.statutory_days}-day limit`);
+  }
+  if (exp.rate_used_pct != null) {
+    parts.push(`${exp.rate_used_pct}% a year`);
+  }
+  if (exp.rate_date) {
+    parts.push(`bank rate as on ${exp.rate_date}`);
+  }
+  return parts.join(", ");
+}
+
+// ---------- ExposureChip ----------
+
+function ExposureChip({ exposure }) {
+  if (!exposure) return null;
+  const { mode, amount_inr, note } = exposure;
+
+  if (mode === "not_computable") {
+    return (
+      <div className="mt-2 inline-flex flex-col gap-0.5">
+        <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1 text-xs text-slate-500 border border-slate-200">
+          <TrendingUp size={11} className="shrink-0" />
+          {note || "Exposure not computable"}
+        </span>
+      </div>
+    );
+  }
+
+  // within-limit: amount is 0 and note mentions limit
+  const isWithinLimit =
+    (amount_inr === 0 || amount_inr === null) &&
+    note &&
+    /limit/i.test(note);
+
+  if (isWithinLimit) {
+    return (
+      <div className="mt-2 inline-flex flex-col gap-0.5">
+        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
+          <ShieldCheck size={11} className="shrink-0" />
+          Within statutory limit
+        </span>
+      </div>
+    );
+  }
+
+  const caption = buildCaption(exposure);
+
+  return (
+    <div className="mt-2 inline-flex flex-col gap-0.5">
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 border border-amber-200">
+        <TrendingUp size={11} className="shrink-0" />
+        {fmtINR(amount_inr)}
+        {mode === "normalized" && (
+          <span className="ml-1 font-normal text-amber-600 italic">Illustrative, per Rs\u00a01,00,000 of invoice value</span>
+        )}
+      </span>
+      {caption && (
+        <span className="pl-0.5 text-[10px] text-slate-400 leading-snug">
+          For payment: {caption}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ---------- VerificationBadge ----------
+
+const CONFIDENCE_MAP = {
+  high:   { label: "Verified against source",  icon: ShieldCheck,    cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  medium: { label: "Partly verified",           icon: ShieldQuestion, cls: "bg-amber-50   text-amber-700   border-amber-200" },
+  low:    { label: "Low confidence",            icon: ShieldAlert,    cls: "bg-rose-50    text-rose-700    border-rose-200" },
+};
+
+function VerificationBadge({ verification }) {
+  if (!verification) return null;
+  const conf = verification.confidence;
+  const meta = CONFIDENCE_MAP[conf];
+  if (!meta) return null;
+  const Icon = meta.icon;
+  const tooltip = verification.flags && verification.flags.length
+    ? verification.flags.join(" • ")
+    : undefined;
+
+  return (
+    <span
+      title={tooltip}
+      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium border ${meta.cls}`}
+    >
+      <Icon size={11} className="shrink-0" />
+      {meta.label}
+    </span>
+  );
+}
+
+// ---------- ClauseCard ----------
 
 export default function ClauseCard({ clause }) {
   return (
@@ -25,6 +134,7 @@ export default function ClauseCard({ clause }) {
                 <Scale size={11} /> {clause.legal_flag}
               </span>
             )}
+            <VerificationBadge verification={clause.verification} />
           </div>
           {/* Section + category */}
           <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
@@ -32,6 +142,8 @@ export default function ClauseCard({ clause }) {
             <span className="mx-1">•</span>
             {clause.category || clause.ui_category}
           </p>
+          {/* Exposure chip */}
+          <ExposureChip exposure={clause.exposure} />
         </div>
 
         <ChevronDown size={18} className="text-slate-400 transition group-open:rotate-180" />

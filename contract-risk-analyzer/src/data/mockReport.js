@@ -18,7 +18,7 @@
  *
  * @typedef {{ title: string, fileName: string, pages: number|null, analyzedAt: string,
  *   overallRisk: string, score: number, summary: string, clauses: ClauseFinding[],
- *   security: AnalysisSecurity|null }} AnalysisReport
+ *   security: AnalysisSecurity|null, total_exposure: object|null }} AnalysisReport
  */
 export const mockReport = {
 	title: "Vendor Services Agreement",
@@ -47,6 +47,11 @@ export const mockReport = {
 				section: null
 			}
 		]
+	},
+	total_exposure: {
+		mode: "actual",
+		total_amount_inr: 7164,
+		finding_count: 2,
 	},
 	clauses: [
 		{
@@ -88,6 +93,96 @@ export const mockReport = {
 			text: "Either party may terminate with 90 days' written notice without an early termination fee.",
 			why_risky: null,
 			recommendation: "Keep this clause and confirm transition support is included in the services schedule."
+		},
+		// --- Exposure demo: actual mode ---
+		{
+			id: 5,
+			title: "Payment credit period",
+			category: "Financial",
+			risk: "High",
+			location: "Section 3, page 4",
+			agent_category: "payment_terms",
+			text: "All invoices shall be settled within 90 days of submission.",
+			why_risky: "Under the MSMED Act 2006 Section 15, payments to MSME suppliers must be made within 45 days. A 90-day credit period is double the statutory limit and exposes the buyer to mandatory interest at 3× the RBI bank rate.",
+			recommendation: "Reduce the payment period to 45 days to comply with MSMED Act Section 15.",
+			legal_flag: "MSMED Act S.15",
+			benchmark_comparison: "Market-standard MSME contracts require settlement within 30–45 days.",
+			exposure: {
+				mode: "actual",
+				amount_inr: 5000,
+				basis: "Computed on ₹1,00,000 outstanding invoice at 17.25% p.a. for 45 excess days",
+				contract_days: 90,
+				statutory_days: 45,
+				extra_days: 45,
+				rate_used_pct: 17.25,
+				rate_date: "7 Oct 2026",
+				note: "Interest on delayed payment under MSMED Act Sec 16 at 3× RBI bank rate."
+			},
+			verification: {
+				quote_verified: true,
+				benchmark_verified: true,
+				confidence: "high",
+				flags: []
+			}
+		},
+		// --- Exposure demo: normalized mode ---
+		{
+			id: 6,
+			title: "Penalty for delayed delivery",
+			category: "Commercial",
+			risk: "High",
+			location: "Section 6, page 8",
+			agent_category: "penalty_ld",
+			text: "Vendor shall pay liquidated damages at 2% of the contract value per week of delay, uncapped.",
+			why_risky: "An uncapped LD clause can extinguish the entire contract value or more for minor slippage.",
+			recommendation: "Cap liquidated damages at 10% of contract value and add a cure period.",
+			legal_flag: "ICA S.74",
+			exposure: {
+				mode: "normalized",
+				amount_inr: 2164,
+				basis: "Illustrative estimate per ₹1,00,000 of invoice value; actual depends on final contract value.",
+				contract_days: null,
+				statutory_days: null,
+				extra_days: null,
+				rate_used_pct: 17.25,
+				rate_date: "7 Oct 2026",
+				note: "Exposure cannot be precisely quantified without final contract value."
+			},
+			verification: {
+				quote_verified: true,
+				benchmark_verified: false,
+				confidence: "medium",
+				flags: ["Benchmark not matched"]
+			}
+		},
+		// --- Exposure demo: not_computable mode ---
+		{
+			id: 7,
+			title: "Broad indemnity clause",
+			category: "Financial",
+			risk: "High",
+			location: "Section 12, page 15",
+			agent_category: "liability",
+			text: "Vendor shall indemnify Buyer from all claims, losses, and expenses of any nature whatsoever.",
+			why_risky: "An unlimited indemnity without a liability cap could expose the vendor to obligations that dwarf the contract value.",
+			recommendation: "Negotiate a mutual, capped indemnity with carve-outs for gross negligence and wilful misconduct.",
+			exposure: {
+				mode: "not_computable",
+				amount_inr: null,
+				basis: "",
+				contract_days: null,
+				statutory_days: null,
+				extra_days: null,
+				rate_used_pct: null,
+				rate_date: null,
+				note: "Indemnity is open-ended; financial exposure depends on future third-party claims."
+			},
+			verification: {
+				quote_verified: false,
+				benchmark_verified: null,
+				confidence: "low",
+				flags: ["Quote not found in document", "No benchmark match", "Low LLM confidence"]
+			}
 		}
 	]
 };
