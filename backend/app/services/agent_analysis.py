@@ -9,6 +9,7 @@ from app.config import settings
 from app.services.llm_client import generate_json, generate_text, resolve_active_model
 from app.services.retrieval import retrieve_benchmark_clauses
 from app.utils.security import wrap_untrusted, verify_finding, enforce_risk_floor
+from app.utils.exposure import compute_exposure
 
 logger = logging.getLogger(__name__)
 
@@ -106,10 +107,19 @@ def analyze_domain_category(
         '      "legal_flag": "Statutory reference e.g. MSMED Act 2006 Sec 15",\n'
         '      "benchmark_comparison": "How this deviates from the standard benchmark clause",\n'
         '      "suggested_alternative": "Actionable safer draft clause",\n'
-        '      "confidence": 0.90\n'
+        '      "confidence": 0.90,\n'
+        '      "payment_days": null,\n'
+        '      "penalty_pct": null,\n'
+        '      "liability_cap_multiple": null,\n'
+        '      "contract_value_inr": null\n'
         '    }\n'
         '  ]\n'
         "}"
+        "\n\nNotes on the four new nullable fields (never guess them):\n"
+        "  payment_days: integer credit period in days if explicitly stated, else null.\n"
+        "  penalty_pct: penalty as % of contract value if explicitly stated, else null.\n"
+        "  liability_cap_multiple: liability cap as a multiple of contract value if explicit, else null.\n"
+        "  contract_value_inr: contract value in INR if explicitly stated, else null."
     )
 
     prompt = (
@@ -143,7 +153,12 @@ def analyze_domain_category(
                 "benchmark_refs": [
                     {"source_doc": b.get("source_doc"), "heading": b.get("heading")}
                     for b in filtered_benchmarks[:2]
-                ] if filtered_benchmarks else []
+                ] if filtered_benchmarks else [],
+                # Nullable exposure fields – passed through as-is (never guessed)
+                "payment_days": item.get("payment_days"),
+                "penalty_pct": item.get("penalty_pct"),
+                "liability_cap_multiple": item.get("liability_cap_multiple"),
+                "contract_value_inr": item.get("contract_value_inr"),
             })
 
         return formatted_clauses
@@ -311,6 +326,17 @@ def run_agentic_analysis_pipeline(
                 ),
             )
             enforce_risk_floor(clause)
+            # Attach MSMED exposure calculation for financial/penalty/liability findings
+            if clause.get("agent_category") in ("payment_terms", "penalty_ld", "liability"):
+                try:
+                    clause["exposure"] = compute_exposure(
+                        payment_days=clause.get("payment_days"),
+                        penalty_pct=clause.get("penalty_pct"),
+                        liability_cap_multiple=clause.get("liability_cap_multiple"),
+                        contract_value_inr=clause.get("contract_value_inr"),
+                    )
+                except Exception as _exp_err:
+                    logger.warning(f"Exposure calc failed for clause '{clause.get('title')}': {_exp_err}")
             all_clauses.append(clause)
 
     # Step 4: Calculate score and overall risk
@@ -325,11 +351,28 @@ def run_agentic_analysis_pipeline(
         model_name=resolved_model
     )
 
+    # Compute total_exposure only when all exposure-bearing findings share the same mode
+    computed_exposures = [
+        c["exposure"] for c in all_clauses
+        if c.get("exposure") and c["exposure"].get("mode") != "not_computable"
+    ]
+    total_exposure: Optional[Dict[str, Any]] = None
+    if computed_exposures:
+        modes = {e["mode"] for e in computed_exposures}
+        if len(modes) == 1:
+            shared_mode = modes.pop()
+            total_exposure = {
+                "mode": shared_mode,
+                "total_amount_inr": round(sum(e.get("amount_inr") or 0.0 for e in computed_exposures), 2),
+                "finding_count": len(computed_exposures),
+            }
+
     return {
         "overall_risk": metrics["overall_risk"],
         "score": metrics["score"],
         "summary": summary,
         "clauses": all_clauses,
         "agent_results": agent_results,
-        "model_used": resolved_model
+        "model_used": resolved_model,
+        "total_exposure": total_exposure,
     }

@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     SIMILARITY_THRESHOLD: float = 0.65
     MAX_AGENT_CONCURRENCY: int = 1
 
+    BANK_RATE_PCT: float = 5.75
+    BANK_RATE_DATE: str = "2026-10-07"
+
     model_config = SettingsConfigDict(
         env_file=str(ENV_PATH),
         env_file_encoding="utf-8",
