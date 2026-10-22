@@ -36,6 +36,7 @@ class AnalysisRecord(Base):
     summary = Column(Text, nullable=True)
     error_message = Column(Text, nullable=True)
     security_report = Column(JSON, nullable=True)
+    total_exposure = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
@@ -57,4 +58,6 @@ class AnalysisClauseResult(Base):
     suggested_alternative = Column(Text, nullable=False)
     confidence = Column(Float, nullable=True)
     benchmark_refs = Column(JSON, nullable=True)
+    exposure = Column(JSON, nullable=True)
+    verification = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

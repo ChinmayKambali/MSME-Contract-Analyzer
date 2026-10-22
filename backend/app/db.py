@@ -28,6 +28,18 @@ def init_db():
                 "ALTER TABLE analysis_records "
                 "ADD COLUMN IF NOT EXISTS security_report JSON;"
             ))
+            conn.execute(text(
+                "ALTER TABLE analysis_records "
+                "ADD COLUMN IF NOT EXISTS total_exposure JSON;"
+            ))
+            conn.execute(text(
+                "ALTER TABLE analysis_clause_results "
+                "ADD COLUMN IF NOT EXISTS exposure JSON;"
+            ))
+            conn.execute(text(
+                "ALTER TABLE analysis_clause_results "
+                "ADD COLUMN IF NOT EXISTS verification JSON;"
+            ))
         logger.info("Column migration check complete.")
     except Exception as e:
         logger.warning(f"Database initialization notice/warning: {e}")

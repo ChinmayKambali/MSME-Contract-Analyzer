@@ -111,7 +111,9 @@ def run_contract_analysis(analysis_id: str):
                 benchmark_comparison=clause.get("benchmark_comparison"),
                 suggested_alternative=clause.get("suggested_alternative", ""),
                 confidence=clause.get("confidence", 0.9),
-                benchmark_refs=clause.get("benchmark_refs", [])
+                benchmark_refs=clause.get("benchmark_refs", []),
+                exposure=clause.get("exposure"),
+                verification=clause.get("verification"),
             )
             db.add(clause_record)
 
@@ -126,6 +128,7 @@ def run_contract_analysis(analysis_id: str):
         record.score = results.get("score", 65)
         record.summary = results.get("summary", "Analysis completed successfully.")
         record.security_report = results.get("security")
+        record.total_exposure = results.get("total_exposure")
         db.commit()
 
         logger.info(f"Finished analysis task successfully for ID: {analysis_id}")

@@ -62,6 +62,7 @@ class AnalysisReportResponse(BaseModel):
     summary: str
     clauses: List[ClauseOutputSchema]
     security: Optional[SecuritySchema] = None
+    total_exposure: Optional[Dict[str, Any]] = None
 
 class AnalysisStatusResponse(BaseModel):
     analysis_id: str

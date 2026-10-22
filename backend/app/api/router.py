@@ -93,7 +93,9 @@ def get_analysis_result(analysis_id: str, db: Session = Depends(get_db)):
             benchmark_comparison=c.benchmark_comparison,
             confidence=c.confidence,
             benchmark_refs=c.benchmark_refs or [],
-            agent_category=c.agent_category
+            agent_category=c.agent_category,
+            exposure=c.exposure,
+            verification=c.verification,
         ))
 
     # If clause_rows is empty (e.g., Phase 1 stub), provide fallback clauses matching UI shape
@@ -124,7 +126,8 @@ def get_analysis_result(analysis_id: str, db: Session = Depends(get_db)):
         score=record.score or 62,
         summary=record.summary or "Analysis complete.",
         clauses=clauses_out,
-        security=SecuritySchema(**record.security_report) if record.security_report else None
+        security=SecuritySchema(**record.security_report) if record.security_report else None,
+        total_exposure=record.total_exposure,
     )
 
 @router.get("/history", response_model=List[HistoryItemSchema])
