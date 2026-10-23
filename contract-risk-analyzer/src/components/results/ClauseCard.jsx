@@ -9,7 +9,21 @@ import { renderInline } from "../../utils/renderInline";
 function fmtINR(amount) {
   if (amount == null) return null;
   const n = Math.round(amount);
-  return "Rs\u00a0" + n.toLocaleString("en-IN");
+  // Use a real no-break space character ( ), NOT a backslash-u escape,
+  // because JSX text children do not process backslash sequences.
+  return "Rs " + n.toLocaleString("en-IN");
+}
+
+/**
+ * Format a date string as "7 Oct 2026".
+ * Accepts ISO 8601 dates ("2026-10-07") or already-formatted strings.
+ * Falls back to the raw string if parsing fails.
+ */
+function fmtDate(raw) {
+  if (!raw) return raw;
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return raw;
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
 /** Build caption parts from exposure fields, skipping nulls */
@@ -22,7 +36,7 @@ function buildCaption(exp) {
     parts.push(`${exp.rate_used_pct}% a year`);
   }
   if (exp.rate_date) {
-    parts.push(`bank rate as on ${exp.rate_date}`);
+    parts.push(`bank rate as on ${fmtDate(exp.rate_date)}`);
   }
   return parts.join(", ");
 }
@@ -65,15 +79,15 @@ function ExposureChip({ exposure }) {
 
   return (
     <div className="mt-2 inline-flex flex-col gap-0.5">
-      <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 border border-amber-200">
-        <TrendingUp size={11} className="shrink-0" />
+      <span className="inline-flex items-center gap-1.5 flex-wrap rounded-md bg-amber-50 px-2.5 py-1 text-base font-semibold text-amber-800 border border-amber-200">
+        <TrendingUp size={13} className="shrink-0" />
         {fmtINR(amount_inr)}
         {mode === "normalized" && (
-          <span className="ml-1 font-normal text-amber-600 italic">Illustrative, per Rs\u00a01,00,000 of invoice value</span>
+          <span className="ml-1 font-normal text-amber-600 italic text-sm">Illustrative, per Rs{' '}1,00,000 of invoice value</span>
         )}
       </span>
       {caption && (
-        <span className="pl-0.5 text-[10px] text-slate-400 leading-snug">
+        <span className="pl-0.5 text-xs text-slate-400 leading-snug">
           For payment: {caption}
         </span>
       )}

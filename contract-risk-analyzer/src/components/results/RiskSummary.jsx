@@ -5,6 +5,7 @@ import { renderInline } from "../../utils/renderInline";
 function fmtINR(amount) {
   if (amount == null) return null;
   const n = Math.round(amount);
+  // Real no-break space, not a backslash-u escape (JSX text children don't process those).
   return "Rs\u00a0" + n.toLocaleString("en-IN");
 }
 

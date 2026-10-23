@@ -67,7 +67,7 @@ def test_payment_null_not_computable():
     result = compute_exposure(payment_days=None)
     assert result["mode"] == "not_computable"
     assert result["amount_inr"] is None
-    assert "null" in result["note"].lower() or "payment_days" in result["note"].lower()
+    assert "no payment period" in result["note"].lower() or "cannot be estimated" in result["note"].lower()
 
 
 def test_actual_mode_five_lakh():

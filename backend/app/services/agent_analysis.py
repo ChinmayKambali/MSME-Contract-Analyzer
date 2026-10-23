@@ -8,8 +8,12 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.services.llm_client import generate_json, generate_text, resolve_active_model
 from app.services.retrieval import retrieve_benchmark_clauses
-from app.utils.security import wrap_untrusted, verify_finding, enforce_risk_floor
-from app.utils.exposure import compute_exposure
+from app.utils.security import (
+    wrap_untrusted, verify_finding, enforce_risk_floor, sanitize_contract_text
+)
+from app.utils.exposure import (
+    compute_payment_exposure, compute_penalty_exposure, compute_liability_exposure
+)
 
 logger = logging.getLogger(__name__)
 
@@ -316,27 +320,39 @@ def run_agentic_analysis_pipeline(
     ]
     for cat in categories:
         for clause in agent_results.get(cat, []):
+            # Detect injection in the clause's own text (what the LLM actually saw)
+            clause_text = clause.get("what_it_says", "") or ""
+            _, clause_security = sanitize_contract_text(clause_text)
+            injection_in_clause = clause_security.get("injection_detected", False)
+
             verify_finding(
                 clause,
                 source_text=contract_text,
                 retrieved_benchmark_ids=retrieved_ids_all,
-                injection_in_clause=bool(
-                    clause.get("verification", {}) and
-                    any("Injection" in f for f in clause.get("verification", {}).get("flags", []))
-                ),
+                injection_in_clause=injection_in_clause,
             )
             enforce_risk_floor(clause)
-            # Attach MSMED exposure calculation for financial/penalty/liability findings
-            if clause.get("agent_category") in ("payment_terms", "penalty_ld", "liability"):
-                try:
-                    clause["exposure"] = compute_exposure(
+            # Attach MSMED exposure dispatched by agent type
+            agent_cat = clause.get("agent_category", "")
+            try:
+                if agent_cat == "payment_terms":
+                    clause["exposure"] = compute_payment_exposure(
                         payment_days=clause.get("payment_days"),
+                        contract_value_inr=clause.get("contract_value_inr"),
+                    )
+                elif agent_cat == "penalty_ld":
+                    clause["exposure"] = compute_penalty_exposure(
                         penalty_pct=clause.get("penalty_pct"),
+                        payment_days=clause.get("payment_days"),
+                        contract_value_inr=clause.get("contract_value_inr"),
+                    )
+                elif agent_cat == "liability":
+                    clause["exposure"] = compute_liability_exposure(
                         liability_cap_multiple=clause.get("liability_cap_multiple"),
                         contract_value_inr=clause.get("contract_value_inr"),
                     )
-                except Exception as _exp_err:
-                    logger.warning(f"Exposure calc failed for clause '{clause.get('title')}': {_exp_err}")
+            except Exception as _exp_err:
+                logger.warning(f"Exposure calc failed for clause '{clause.get('title')}': {_exp_err}")
             all_clauses.append(clause)
 
     # Step 4: Calculate score and overall risk

@@ -232,9 +232,12 @@ def enforce_risk_floor(finding: Dict[str, Any]) -> Dict[str, Any]:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-# Regex for common section/clause headings (e.g. "Section 3", "Clause 12.1", "3.")
+# Regex for common section/clause headings.
+# Group 1: named keyword headings  e.g. "Section 3", "Clause 12.1"
+# Group 2: numbered headings       e.g. "1. Payment Terms" (number + title word(s) up to ~60 chars before a full stop)
 _SECTION_RE = re.compile(
-    r"(?:section|clause|article|schedule|annexure)\s+[\d\.]+|^\d+\.\d*\s+\w",
+    r"(?:(?:section|clause|article|schedule|annexure)\s+[\d\.]+)"
+    r"|(?:^\d+(?:\.\d+)*\.\s+[A-Za-z][^.\n]{0,55})",
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -255,12 +258,21 @@ def _extract_excerpt(text: str, start: int, end: int, max_len: int = 220) -> str
 
 
 def _nearest_section(text: str, pos: int) -> Optional[str]:
-    """Return the closest preceding section/clause heading, or None."""
+    """Return the closest preceding section/clause heading, or None.
+
+    For numbered headings (e.g. '1. Payment Terms. The Buyer shall pay…') the
+    match captures only the number + title portion (up to ~60 chars before the
+    first full stop that ends the heading), so the returned string is
+    '1. Payment Terms' rather than an unrelated sentence fragment.
+    """
     best: Optional[str] = None
     for m in _SECTION_RE.finditer(text):
         if m.start() > pos:
             break
-        best = m.group(0).strip()
+        heading = m.group(0).strip()
+        # Trim trailing punctuation that crept in (e.g. trailing period)
+        heading = heading.rstrip(".")
+        best = heading if heading else None
     return best
 
 

@@ -67,8 +67,8 @@ def compute_exposure(
             "rate_used_pct": rate_used_pct,
             "rate_date": rate_date,
             "note": (
-                "payment_days is null; cannot compute statutory interest. "
-                "Extract the credit period from the contract and re-run."
+                "No payment period is stated in this clause, so statutory "
+                "interest cannot be estimated."
             ),
         }
 
@@ -143,3 +143,87 @@ def compute_exposure(
             result["note"] += f" Liability cap: {liability_cap_multiple}× contract value (rupee amount only shown in actual mode)."
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Per-agent dispatcher helpers (use these in the pipeline instead of calling
+# compute_exposure directly for all agent types).
+# ---------------------------------------------------------------------------
+
+def compute_payment_exposure(
+    *,
+    payment_days: Optional[int] = None,
+    contract_value_inr: Optional[float] = None,
+) -> Dict[str, Any]:
+    """Exposure for payment_terms agent: statutory interest only."""
+    return compute_exposure(
+        payment_days=payment_days,
+        contract_value_inr=contract_value_inr,
+    )
+
+
+def compute_penalty_exposure(
+    *,
+    penalty_pct: Optional[float] = None,
+    payment_days: Optional[int] = None,
+    contract_value_inr: Optional[float] = None,
+) -> Dict[str, Any]:
+    """Exposure for penalty_ld agent: penalty amount (payment interest included when days present)."""
+    return compute_exposure(
+        payment_days=payment_days,
+        penalty_pct=penalty_pct,
+        contract_value_inr=contract_value_inr,
+    )
+
+
+def compute_liability_exposure(
+    *,
+    liability_cap_multiple: Optional[float] = None,
+    contract_value_inr: Optional[float] = None,
+) -> Optional[Dict[str, Any]]:
+    """Exposure for liability agent.
+
+    Returns None when no numeric cap multiple is available (caller should not
+    show a chip in that case).  When a cap is present the rupee amount is
+    returned in actual mode, or a normalized note in illustrative mode.
+    """
+    if liability_cap_multiple is None:
+        return None
+
+    rate_used_pct: float = _MSME_MULTIPLIER * settings.BANK_RATE_PCT
+    rate_date: str = settings.BANK_RATE_DATE
+
+    if contract_value_inr is not None:
+        mode = "actual"
+        base = float(contract_value_inr)
+        basis = f"Actual contract value: Rs {contract_value_inr:,.0f}"
+        cap_inr = liability_cap_multiple * base
+        note = (
+            f"Liability is capped at {liability_cap_multiple}\u00d7 the contract value "
+            f"(Rs\u00a0{cap_inr:,.0f}). This limits the maximum amount the buyer must pay "
+            f"if things go wrong."
+        )
+        amount_inr: Optional[float] = round(cap_inr, 2)
+    else:
+        mode = "normalized"
+        base = _NORMALIZED_BASE
+        basis = "Illustrative, per Rs\u00a01,00,000 of contract value"
+        cap_inr_norm = liability_cap_multiple * base
+        note = (
+            f"Liability is capped at {liability_cap_multiple}\u00d7 the contract value "
+            f"(Rs\u00a0{cap_inr_norm:,.0f} per lakh). "
+            f"The exact rupee cap depends on the actual contract value."
+        )
+        amount_inr = round(cap_inr_norm, 2)
+
+    return {
+        "mode": mode,
+        "amount_inr": amount_inr,
+        "basis": basis,
+        "contract_days": None,
+        "statutory_days": STATUTORY_DAYS,
+        "extra_days": None,
+        "rate_used_pct": rate_used_pct,
+        "rate_date": rate_date,
+        "note": note,
+    }
