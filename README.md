@@ -134,7 +134,7 @@ Open http://localhost:5173. Vite proxies `/api` to the backend on port 8000.
 
 ## Deployment
 
-The live demo runs as a **single Docker container on Render** (branch [`deploy-demo`](../../tree/deploy-demo)): FastAPI serves the built React app, analyses run in a background thread instead of Celery/Redis (`TASK_MODE=inline`), and Postgres + pgvector is hosted on **Neon**. The benchmark library seeds itself on first start.
+The live demo runs as a **single Docker container on Render** (branch [`deploy-demo`](https://github.com/ChinmayKambali/MSME-Contract-Analyzer/tree/deploy-demo)): FastAPI serves the built React app, analyses run in a background thread instead of Celery/Redis (`TASK_MODE=inline`), and Postgres + pgvector is hosted on **Neon**. The benchmark library seeds itself on first start.
 
 ## Tests
 
@@ -183,7 +183,6 @@ MSME-Contract-Analyzer/
 - Clause-level redlining with suggested replacement wording
 - Hindi and regional-language contracts
 - Exportable PDF report
-- ~~Hosted demo~~ (done, see the live demo link above)
 
 ## Disclaimer
 
