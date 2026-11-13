@@ -1,81 +1,32 @@
-# ContractGuard AI
+# ContractGuard AI: Frontend
 
-ContractGuard AI is a React and Vite application for reviewing contracts and highlighting clauses that may create legal, financial, privacy, or operational risk.
+React + Vite frontend for the [MSME Contract Analyzer](../README.md).
 
-## Features
+## Flow
 
-- Upload PDF, DOC, and DOCX contract files
-- Simulated document scanning and text extraction flow
-- Multi-agent contract review workflow
-- Risk score and overall risk summary
-- Prioritized clause findings with recommended actions
-- Downloadable text report
-- Responsive interface for desktop and mobile screens
+`Upload` → `Scan` (text extraction) → `Analysis` (live status of the 6 agents) → `Results` (risk score, clause cards, exposure, injection warnings, follow-up chat, report download)
 
-## Tech Stack
-
-- React
-- Vite
-- React Router
-- Tailwind CSS
-- Lucide React
-
-## Getting Started
-
-### Requirements
-
-- Node.js 18 or newer
-- npm
-
-### Install dependencies
+## Run
 
 ```bash
 npm install
+npm run dev      # http://localhost:5173
 ```
 
-### Start the development server
+The dev server proxies `/api` to the FastAPI backend at `http://localhost:8000` (see `vite.config.js`), so start the backend first. See the root README.
 
 ```bash
-npm run dev
+npm run build    # production build into dist/
 ```
 
-Open the local URL displayed by Vite in your browser.
+## Structure
 
-### Create a production build
-
-```bash
-npm run build
 ```
-
-### Preview the production build
-
-```bash
-npm run preview
-```
-
-## Workflow
-
-1. Upload a contract.
-2. Scan the document.
-3. Review the specialist analysis progress.
-4. Combine the findings into one report.
-5. Review prioritized risks and recommended actions.
-
-The current application uses local mock report data and simulated analysis progress. No backend or external API is required to run the interface.
-
-## Project Structure
-
-```text
-public/                 Static files and public assets
 src/
-  assets/               Application assets, icons, images, and fonts
-  components/           Reusable UI and workflow components
-  context/              Contract, upload, and analysis state
-  data/                 Local mock report data
-  hooks/                 Upload, scan, analysis, and download hooks
-  layouts/              Application shell, navigation, and footer
-  pages/                Upload, scan, analysis, combine, and results pages
-  routes/               React Router configuration
-  styles/               Global styles
-  utils/                Shared constants and helpers
+├── pages/        # Upload, Scan, Analysis, Results, Combine, NotFound
+├── components/   # upload/, scan/, analysis/, results/, combine/, common/
+├── context/      # Upload, Contract and Analysis state
+├── hooks/        # useUpload, useScan, useAnalysis, useDownload
+├── utils/        # apiClient, risk colours, helpers
+└── routes/       # AppRoutes
 ```

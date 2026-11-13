@@ -30,3 +30,6 @@ Thumbs.db
 .idea/
 .vscode/
 celery.log
+
+# Tool logs
+data/

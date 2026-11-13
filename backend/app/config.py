@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL_NAME: str = "gemini-embedding-001"
     EMBEDDING_DIM: int = 768
 
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/contract_risk_db"
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5433/contract_risk_db"
     REDIS_URL: str = "redis://localhost:6379/0"
 
     STORAGE_TYPE: str = "local"
