@@ -1,7 +1,9 @@
 import datetime
+import threading
 from typing import List
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from app.config import settings
 from app.db import get_db
 from app.models import AnalysisRecord, AnalysisClauseResult
 from app.schemas import (
@@ -38,8 +40,12 @@ async def upload_contract(file: UploadFile = File(...), db: Session = Depends(ge
         db.add(record)
         db.commit()
 
-        # Enqueue async Celery task
-        run_contract_analysis.delay(file_id)
+        if settings.TASK_MODE == "inline":
+            # Single-container hosting: run the pipeline in a background thread
+            threading.Thread(target=run_contract_analysis.run, args=(file_id,), daemon=True).start()
+        else:
+            # Enqueue async Celery task
+            run_contract_analysis.delay(file_id)
 
         return {
             "analysis_id": file_id,

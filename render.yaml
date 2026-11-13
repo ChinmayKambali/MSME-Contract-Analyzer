@@ -1,0 +1,18 @@
+# Render Blueprint: one Docker web service (API + React UI on the same URL).
+# Postgres with pgvector is external (e.g. Neon); paste its URL as DATABASE_URL.
+services:
+  - type: web
+    name: contractguard
+    runtime: docker
+    plan: free
+    branch: deploy-demo
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: TASK_MODE
+        value: inline
+      - key: MAX_AGENT_CONCURRENCY
+        value: "1"

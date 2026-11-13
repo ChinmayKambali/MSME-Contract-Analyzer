@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = str(ROOT_DIR / "backend" / "uploads")
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
 
+    # "celery" = queue jobs on Redis (local dev); "inline" = run in a background
+    # thread inside the API process (single-container hosting, no Redis needed).
+    TASK_MODE: str = "celery"
+    # When set, FastAPI also serves the built React app from this folder.
+    FRONTEND_DIST_DIR: str = ""
+
     SIMILARITY_THRESHOLD: float = 0.65
     MAX_AGENT_CONCURRENCY: int = 1
 

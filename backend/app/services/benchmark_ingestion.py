@@ -100,6 +100,12 @@ def seed_benchmark_library(db: Session, benchmark_folder: str = "MSME BENCHMARK 
         for item in clauses:
             existing = db.query(BenchmarkClause).filter(BenchmarkClause.content_hash == item["content_hash"]).first()
             if existing:
+                if existing.embedding is None:
+                    # Retry clauses whose embedding failed on an earlier run (e.g. quota)
+                    try:
+                        existing.embedding = get_embedding(item["text"], task_type="RETRIEVAL_DOCUMENT")
+                    except Exception as e:
+                        logger.warning(f"Re-embedding failed for {item['heading']}: {e}")
                 continue
 
             # Generate vector embedding for clause text using RETRIEVAL_DOCUMENT task type
@@ -120,6 +126,10 @@ def seed_benchmark_library(db: Session, benchmark_folder: str = "MSME BENCHMARK 
             )
             db.add(benchmark_entry)
             added_count += 1
+
+        # Commit per document so progress survives a restart mid-seed
+        db.commit()
+        logger.info(f"Seeded {doc_file.name} ({added_count} new clauses so far)")
 
     db.commit()
     logger.info(f"Seeded {added_count} benchmark clauses into database.")
