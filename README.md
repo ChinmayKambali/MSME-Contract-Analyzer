@@ -2,6 +2,8 @@
 
 **AI-powered contract risk analysis for Indian small businesses.** Upload a contract (PDF or DOCX) and six specialist AI agents review it clause by clause, flagging unfair payment terms, penalty traps, IP grabs, one-sided liability and more. Each finding comes with a statutory reference, an estimated financial exposure and a recommended fix, before you sign.
 
+**🔗 Live demo: [contractguard-9tt3.onrender.com](https://contractguard-9tt3.onrender.com)**. Upload any PDF/DOCX contract, or try the sample [risky_msme_contract.docx](backend/tests/fixtures/risky_msme_contract.docx). *Hosted on a free tier: the first load can take up to a minute while the server wakes, and an analysis takes about 2–3 minutes.*
+
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
@@ -129,6 +131,11 @@ Open http://localhost:5173. Vite proxies `/api` to the backend on port 8000.
 | `GET` | `/api/history` | Past analyses |
 | `GET` | `/health` | Health check |
 
+
+## Deployment
+
+The live demo runs as a **single Docker container on Render** (branch [`deploy-demo`](../../tree/deploy-demo)): FastAPI serves the built React app, analyses run in a background thread instead of Celery/Redis (`TASK_MODE=inline`), and Postgres + pgvector is hosted on **Neon**. The benchmark library seeds itself on first start.
+
 ## Tests
 
 Most tests run fully offline with no API key needed:
@@ -176,7 +183,7 @@ MSME-Contract-Analyzer/
 - Clause-level redlining with suggested replacement wording
 - Hindi and regional-language contracts
 - Exportable PDF report
-- Hosted demo
+- ~~Hosted demo~~ (done, see the live demo link above)
 
 ## Disclaimer
 
