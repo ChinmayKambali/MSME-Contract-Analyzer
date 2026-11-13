@@ -5,8 +5,16 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+def _normalize_db_url(url: str) -> str:
+    """Pin the psycopg2 driver: newer SQLAlchemy defaults postgresql:// to psycopg 3,
+    which isn't installed. Also accept the postgres:// scheme some hosts hand out."""
+    for prefix in ("postgresql://", "postgres://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg2://" + url[len(prefix):]
+    return url
+
 engine = create_engine(
-    settings.DATABASE_URL,
+    _normalize_db_url(settings.DATABASE_URL),
     pool_pre_ping=True,
     echo=False
 )
